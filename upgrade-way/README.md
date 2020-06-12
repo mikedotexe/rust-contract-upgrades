@@ -8,35 +8,41 @@ near delete upgrade.mike.testnet mike.testnet
 git checkout version-1
 ./build.sh
 
+### Export your testnet account as an environment variable
+export NEAR_ACCT=mike.testnet
+
 ### Deploy
-near deploy --accountId upgrade.mike.testnet --wasmFile res/enum_upgrade.wasm
+./deploy.sh
 
 ### Set Version 1 info
-near call upgrade.mike.testnet new '{"name": "ryu"}' --accountId upgrade.mike.testnet
+./new.sh
 
 ### Change name
-near call upgrade.mike.testnet set_name '{"new_name": "ken"}' --accountId upgrade.mike.testnet
+./change-name.sh
 
-### View Version 1 info
-near view upgrade.mike.testnet log_version_data '{"index": 0}'
+### View Version 1 info (0 indicates index of versions)
+./version-data.sh 0
 
 ### Upgrade contract to Version 2
 git checkout version-2
 ./build.sh
-near deploy --accountId upgrade.mike.testnet --wasmFile res/enum_upgrade.wasm
-near call upgrade.mike.testnet add_v2_with_color '{"favorite_color": "hot pink"}' --accountId upgrade.mike.testnet
-near view upgrade.mike.testnet log_version_data '{"index": 0}'
-near view upgrade.mike.testnet log_version_data '{"index": 1}'
+./deploy.sh
+./add-version-2.sh
+./version-data.sh 0
+./version-data.sh 1
 
 ### Change current version's (Version 2) color:
-near call upgrade.mike.testnet set_favorite_color '{"new_color": "pastel green"}' --accountId upgrade.mike.testnet
-near view upgrade.mike.testnet log_version_data '{"index": 1}'
+./set-color.sh "pastel green"
+./version-data.sh 1
 
-near call upgrade.mike.testnet set_favorite_musician '{"new_musician": "radiohead"}' --accountId upgrade.mike.testnet
-near view upgrade.mike.testnet log_version_data '{"index": 1}'
+./set-musician.sh "Nilüfer Yanya"
+./version-data.sh 1
 
 ### Set all variables using setters
-near call upgrade.mike.testnet set_all '{"new_name": "blanka", "new_color": "hipster plaid red", "new_musician": "glitch mob"}' --accountId upgrade.mike.testnet
+./set-all.sh blanka "hipster plaid red" "glitch mob"
 
 ### Get all variables using getters
-near view upgrade.mike.testnet get_all
+./get_all.sh
+
+### Get current version, which is always the last one
+./get-current-version.sh
