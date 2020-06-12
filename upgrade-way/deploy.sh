@@ -1,2 +1,2 @@
 #!/bin/bash
-near deploy --accountId upgrade.mike.testnet --wasmFile res/enum_upgrade.wasm
+near deploy --accountId upgrade.$NEAR_ACCT --wasmFile res/enum_upgrade.wasm
