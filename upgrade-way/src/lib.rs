@@ -1,22 +1,9 @@
 use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{Serialize};
 use near_sdk::{env, near_bindgen, collections::Vector};
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-/*
-  Good links
-
-  What is the syntax to match on a reference to an enum?
-  - https://stackoverflow.com/a/36592628/711863
-
-  Possibly consider adding "ref" in places
-  https://doc.rust-lang.org/stable/rust-by-example/scope/borrow/ref.html
-
-  Possibly ref here:
-  https://stackoverflow.com/a/22266744/711863
-
-*/
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 pub struct Version1 {
@@ -25,15 +12,38 @@ pub struct Version1 {
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
 pub struct Version2 {
-    // add favorite_color in addition to Version 1's "name" variable
+    // add "favorite_color" in addition to Version 1's "name" variable
     pub favorite_color: String,
     pub favorite_musician: String,
+}
+
+// Used in Version 3
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
+pub struct Account {
+    first_name: String,
+    last_name: String,
+    pronoun: String,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
+pub struct Version3 {
+    // add "account" which uses Version 1's "name"
+    pub account: Account,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub enum Version {
     V1(Version1),
     V2(Version2),
+    V3(Version3),
+}
+
+// Used in get_all()
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Debug)]
+pub struct AllValues {
+    name: String,
+    favorite_color: String,
+    favorite_musician: String,
 }
 
 impl Version {
@@ -46,17 +56,27 @@ impl Version {
             Version::V2(_) => {
                 "0.0.2".to_string()
             },
+            Version::V3(_) => {
+                "0.1.0".to_string()
+            },
         }
     }
 }
 
 #[near_bindgen]
-#[derive(Default, BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct Contract {
     // https://github.com/near/near-sdk-rs/blob/master/near-sdk/src/collections/vector.rs
     versions: Vector<Version>,
-    // Consider adding other data structures that will never be changed/removed and scale significantly here
+    current_version_index: u64,
+    // Consider adding other data structures that will never be changed/removed and scale significantly here?
     // (Under the assumption that perhaps the match on set_* calls may be at risk of bloating system)
+}
+
+impl Default for Contract {
+    fn default() -> Self {
+        env::panic(b"Contract must be initialized before usage with 'new' function call.")
+    }
 }
 
 #[near_bindgen]
@@ -69,15 +89,15 @@ impl Contract {
         };
         let mut contract = Contract {
             versions: Vector::new(b"versions".to_vec()),
-            // versions: vec![Version::V1(initial_version)],
+            current_version_index: 0,
         };
         contract.versions.push(&Version::V1(initial_version));
         contract
     }
 
+    // Since it's possible that Vector will use swap_remove, we keep track with current_version_index
     pub fn get_current_version(&self) -> String {
-        // We'll assume the "current version" is the last item in the Vec
-        self.versions.get(self.versions.len() - 1).unwrap().get_version()
+        self.versions.get(self.current_version_index).unwrap().get_version()
     }
 
     pub fn log_version_data(&self, index: u64) {
@@ -95,7 +115,7 @@ impl Contract {
                 name: name.to_string()
             },
             _ => {
-                env::panic(b"Error upgrading to version 2 when retrieving first version.")
+                env::panic(self._error_retrieving_version().as_bytes())
             }
         };
         version_one.name
@@ -103,14 +123,14 @@ impl Contract {
 
     // Custom setter ("name" exists in Version1)
     pub fn set_name(&mut self, new_name: String) {
-        self.only_owner_predecessor();
+        self._only_owner_predecessor();
 
         let mut version_one = match self.versions.get(0).unwrap() {
             Version::V1(Version1{name}) => Version1 {
                 name: name.to_string()
             },
             _ => {
-                env::panic(b"Error upgrading to version 2 when retrieving first version.")
+                env::panic(self._error_retrieving_version().as_bytes())
             }
         };
         version_one.name = new_name;
@@ -119,8 +139,13 @@ impl Contract {
     }
 
     // Helper function checking for owner
-    fn only_owner_predecessor(&mut self) {
+    fn _only_owner_predecessor(&mut self) {
         assert_eq!(env::predecessor_account_id(), env::current_account_id(), "Only contract owner can sign transactions for this method.");
+    }
+
+    // Helper function for common error message
+    fn _error_retrieving_version(&self) -> String {
+        "Error retrieving version.".to_string()
     }
 
     /* Start Version 2 work */
@@ -128,13 +153,15 @@ impl Contract {
     /// Write a (transient) custom upgrade script here.
     /// After this function is executed it can be deleted and the contract redeployed if desired.
     pub fn add_v2_with_color(&mut self, favorite_color: String) {
-        self.only_owner_predecessor();
+        self._only_owner_predecessor();
 
         let v2 = Version2 {
             favorite_color,
             favorite_musician: self._empty_string() // Info we haven't collected yet
         };
         self.versions.push(&Version::V2(v2));
+        // Update the index of the current version
+        self.current_version_index = self.versions.len() - 1;
     }
 
     // Custom getter ("favorite_color" exists in Version2)
@@ -146,7 +173,7 @@ impl Contract {
                 favorite_musician: self._empty_string()
             },
             _ => {
-                env::panic(b"Error getting favorite color")
+                env::panic(self._error_retrieving_version().as_bytes())
             }
         };
         version_two.favorite_color
@@ -154,7 +181,7 @@ impl Contract {
 
     // Custom setter ("favorite_color" exists in Version2)
     pub fn set_favorite_color(&mut self, new_color: String) {
-        self.only_owner_predecessor();
+        self._only_owner_predecessor();
         // TODO try this pattern
         // https://stackoverflow.com/q/37267060/711863
         let mut version_two = match self.versions.get(1).unwrap() {
@@ -163,7 +190,7 @@ impl Contract {
                 favorite_musician: favorite_musician.to_string()
             },
             _ => {
-                env::panic(b"Error changing favorite color")
+                env::panic(self._error_retrieving_version().as_bytes())
             }
         };
         version_two.favorite_color = new_color;
@@ -180,7 +207,7 @@ impl Contract {
                 favorite_musician: favorite_musician.to_string()
             },
             _ => {
-                env::panic(b"Error getting favorite musician")
+                env::panic(self._error_retrieving_version().as_bytes())
             }
         };
         version_two.favorite_musician
@@ -189,14 +216,14 @@ impl Contract {
     // Custom setter ("favorite_musician" exists in Version2)
     // Trying to "ref" here, not sure if it's helpful
     pub fn set_favorite_musician(&mut self, new_musician: String) {
-        self.only_owner_predecessor();
+        self._only_owner_predecessor();
         let mut version_two = match self.versions.get(1).unwrap() {
             Version::V2(Version2{ref favorite_color, ref favorite_musician}) => Version2 {
                 favorite_color: favorite_color.to_string(),
                 favorite_musician: favorite_musician.to_string()
             },
             _ => {
-                env::panic(b"Error changing favorite musician")
+                env::panic(self._error_retrieving_version().as_bytes())
             }
         };
         version_two.favorite_musician = new_musician;
@@ -209,12 +236,17 @@ impl Contract {
         self.set_favorite_musician(new_musician);
     }
 
-    pub fn get_all(&self) -> (String, String, String) {
+    // pub fn get_all(&self) -> (String, String, String) {
+    pub fn get_all(&self) -> AllValues {
         let name = self.get_name();
-        let color = self.get_favorite_color();
-        let musician = self.get_favorite_musician();
-        // return tuple
-        (name, color, musician)
+        let favorite_color = self.get_favorite_color();
+        let favorite_musician = self.get_favorite_musician();
+
+        AllValues {
+            name,
+            favorite_color,
+            favorite_musician,
+        }
     }
 
     fn _empty_string(&self) -> String {
@@ -224,6 +256,41 @@ impl Contract {
     /* End Version 2 work */
 
     /* Start Version 3 work */
+
+    /// Write a (transient) custom upgrade script here.
+    /// After this function is executed it can be deleted and the contract redeployed if desired.
+    pub fn add_v3_and_migrate(&mut self) {
+        self._only_owner_predecessor();
+
+        let v1_name = self.get_name();
+        let split_on_space: Vec<&str> = v1_name.split(' ').collect();
+        let last_name = if split_on_space.len() > 1 {
+            split_on_space[1].to_string()
+        } else {
+            self._empty_string()
+        };
+
+        let v3 = Version3 {
+            account: Account {
+                first_name: split_on_space[0].to_string(),
+                last_name,
+                pronoun: "".to_string()
+            }
+        };
+        self.versions.push(&Version::V3(v3));
+        self.current_version_index = self.versions.len() - 1;
+    }
+
+    /// Write a (transient) custom upgrade script here.
+    /// After this function is executed it can be deleted and the contract redeployed if desired.
+    pub fn remove_v1(&mut self) {
+        self._only_owner_predecessor();
+
+        // Note: this removes index 0 (Version 1, and swaps in the last item: Version 3
+        self.versions.swap_remove(0);
+        // Hence, we now set the index to 0
+        self.current_version_index = 0;
+    }
 
     /* End Version 3 work */
 }
