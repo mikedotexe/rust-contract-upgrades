@@ -13,6 +13,9 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
   Possibly consider adding "ref" in places
   https://doc.rust-lang.org/stable/rust-by-example/scope/borrow/ref.html
 
+  Possibly ref here:
+  https://stackoverflow.com/a/22266744/711863
+
 */
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
@@ -120,7 +123,7 @@ impl Contract {
         assert_eq!(env::predecessor_account_id(), env::current_account_id(), "Only contract owner can sign transactions for this method.");
     }
 
-    /* Version 2 work */
+    /* Start Version 2 work */
 
     /// Write a (transient) custom upgrade script here.
     /// After this function is executed it can be deleted and the contract redeployed if desired.
@@ -129,7 +132,7 @@ impl Contract {
 
         let v2 = Version2 {
             favorite_color,
-            favorite_musician: self.empty_string() // Info we haven't collected yet
+            favorite_musician: self._empty_string() // Info we haven't collected yet
         };
         self.versions.push(&Version::V2(v2));
     }
@@ -140,7 +143,7 @@ impl Contract {
             // use .. here because we don't care about the value of any variables after
             Version::V2(Version2{favorite_color, ..}) => Version2 {
                 favorite_color: favorite_color.to_string(),
-                favorite_musician: self.empty_string()
+                favorite_musician: self._empty_string()
             },
             _ => {
                 env::panic(b"Error getting favorite color")
@@ -152,6 +155,8 @@ impl Contract {
     // Custom setter ("favorite_color" exists in Version2)
     pub fn set_favorite_color(&mut self, new_color: String) {
         self.only_owner_predecessor();
+        // TODO try this pattern
+        // https://stackoverflow.com/q/37267060/711863
         let mut version_two = match self.versions.get(1).unwrap() {
             Version::V2(Version2{favorite_color, favorite_musician}) => Version2 {
                 favorite_color: favorite_color.to_string(),
@@ -171,7 +176,7 @@ impl Contract {
             // use .. here because we don't care about the value of any variables after
             // note we can reorder the parameters even though favorite_color appears first in the declaration
             Version::V2(Version2{favorite_musician, ..}) => Version2 {
-                favorite_color: self.empty_string(),
+                favorite_color: self._empty_string(),
                 favorite_musician: favorite_musician.to_string()
             },
             _ => {
@@ -212,7 +217,13 @@ impl Contract {
         (name, color, musician)
     }
 
-    fn empty_string(&self) -> String {
+    fn _empty_string(&self) -> String {
         "".to_string()
     }
+
+    /* End Version 2 work */
+
+    /* Start Version 3 work */
+
+    /* End Version 3 work */
 }
