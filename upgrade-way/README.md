@@ -18,7 +18,7 @@ export NEAR_ACCT=mike.testnet
 ./new.sh
 
 ### Change name
-./change-name.sh
+./set-name.sh "George Costanza"
 
 ### View Version 1 info (0 indicates index of versions)
 ./version-data.sh 0
@@ -44,5 +44,26 @@ git checkout version-2
 ### Get all variables using getters
 ./get_all.sh
 
-### Get current version, which is always the last one
+### Get current version, which is usually the last item in the Vector, but can change if there are removals
 ./get-current-version.sh
+
+### Add version 3 which "migrates" data from Version 1 into a new struct
+./add-version-3.sh
+
+### Remove Version 1 as it's no longer needed in storage
+./remove-version-1.sh
+
+### Regular confirmations…
+./get-current-version.sh
+./get_all.sh
+
+# References
+
+What is the syntax to match on a reference to an enum?
+- https://stackoverflow.com/a/36592628/711863
+
+Possibly consider adding "ref" in places
+https://doc.rust-lang.org/stable/rust-by-example/scope/borrow/ref.html
+
+Possibly ref here:
+https://stackoverflow.com/a/22266744/711863
