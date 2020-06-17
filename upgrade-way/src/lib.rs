@@ -1,13 +1,24 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Serialize};
-use near_sdk::{env, near_bindgen, collections::Vector};
+use near_sdk::{env, near_bindgen, collections::Vector, collections::Map, AccountId};
+use core::fmt;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct Version1 {
     pub name: String,
+    pub map: Map<AccountId, String>,
+}
+
+impl fmt::Debug for Version1 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Version1")
+            .field("name", &self.name)
+            .field("map", &self.map.to_vec())
+            .finish()
+    }
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
@@ -85,7 +96,8 @@ impl Contract {
     pub fn new(name: String) -> Self {
         assert!(env::state_read::<Self>().is_none(), "Already initialized");
         let initial_version = Version1 {
-            name
+            name,
+            map: Map::new(b"m".to_vec()),
         };
         let mut contract = Contract {
             versions: Vector::new(b"versions".to_vec()),
@@ -111,12 +123,11 @@ impl Contract {
     // Custom getter ("name" exists in Version1)
     pub fn get_name(&self) -> String {
         let version_one = match self.versions.get(0).unwrap() {
-            Version::V1(Version1{name}) => Version1 {
-                name: name.to_string()
+            Version::V1(Version1{name, ..}) => Version1 {
+                name: name.to_string(),
+                map: Map::default(),
             },
-            _ => {
-                env::panic(self._error_retrieving_version().as_bytes())
-            }
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_one.name
     }
@@ -126,14 +137,71 @@ impl Contract {
         self._only_owner_predecessor();
 
         let mut version_one = match self.versions.get(0).unwrap() {
-            Version::V1(Version1{name}) => Version1 {
-                name: name.to_string()
+            Version::V1(Version1{name, map}) => Version1 {
+                name: name.to_string(),
+                map,
             },
-            _ => {
-                env::panic(self._error_retrieving_version().as_bytes())
-            }
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_one.name = new_name;
+        // actually write it to storage
+        self.versions.replace(0, &Version::V1(version_one));
+    }
+
+    // Custom getter ("map" exists in Version1)
+    pub fn get_map(&self) -> Vec<(String, String)> {
+        let version_one = match self.versions.get(0).unwrap() {
+            Version::V1(Version1{map, ..}) => Version1 {
+                map: map,
+                name: self._empty_string(),
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        version_one.map.to_vec()
+    }
+
+    pub fn get_map_len(&self) -> u64 {
+        let version_one = match self.versions.get(0).unwrap() {
+            Version::V1(Version1{map, ..}) => Version1 {
+                map: map,
+                name: self._empty_string(),
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        version_one.map.len()
+    }
+
+    // Custom setter ("map" exists in Version1)
+    pub fn add_to_map(&mut self, account: AccountId, desc: String) {
+        self._only_owner_predecessor();
+
+        let mut version_one = match self.versions.get(0).unwrap() {
+            Version::V1(Version1{name, map}) => Version1 {
+                name: name.to_string(),
+                map,
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        version_one.map.insert(&account, &desc);
+        // actually write it to storage
+        self.versions.replace(0, &Version::V1(version_one));
+    }
+
+    pub fn bloat_map(&mut self) {
+        self._only_owner_predecessor();
+
+        let mut version_one = match self.versions.get(0).unwrap() {
+            Version::V1(Version1{name, map}) => Version1 {
+                name: name.to_string(),
+                map,
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        for x in 0..190 {
+            let key = format!("reasonably long time of string that'll take up some storage {}-{}", x, version_one.map.len());
+            let val = "well shucks I guess this should be longer than a short word but nothing comes to mind.".to_string();
+            version_one.map.insert(&key, &val);
+        }
         // actually write it to storage
         self.versions.replace(0, &Version::V1(version_one));
     }
@@ -172,9 +240,7 @@ impl Contract {
                 favorite_color: favorite_color.to_string(),
                 favorite_musician: self._empty_string()
             },
-            _ => {
-                env::panic(self._error_retrieving_version().as_bytes())
-            }
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_two.favorite_color
     }
@@ -183,15 +249,15 @@ impl Contract {
     pub fn set_favorite_color(&mut self, new_color: String) {
         self._only_owner_predecessor();
         // TODO try this pattern
+        // https://blog.rust-lang.org/2015/04/17/Enums-match-mutation-and-moves.html
+        // or
         // https://stackoverflow.com/q/37267060/711863
         let mut version_two = match self.versions.get(1).unwrap() {
             Version::V2(Version2{favorite_color, favorite_musician}) => Version2 {
                 favorite_color: favorite_color.to_string(),
                 favorite_musician: favorite_musician.to_string()
             },
-            _ => {
-                env::panic(self._error_retrieving_version().as_bytes())
-            }
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_two.favorite_color = new_color;
         self.versions.replace(1, &Version::V2(version_two));
@@ -206,9 +272,7 @@ impl Contract {
                 favorite_color: self._empty_string(),
                 favorite_musician: favorite_musician.to_string()
             },
-            _ => {
-                env::panic(self._error_retrieving_version().as_bytes())
-            }
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_two.favorite_musician
     }
@@ -222,9 +286,7 @@ impl Contract {
                 favorite_color: favorite_color.to_string(),
                 favorite_musician: favorite_musician.to_string()
             },
-            _ => {
-                env::panic(self._error_retrieving_version().as_bytes())
-            }
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_two.favorite_musician = new_musician;
         self.versions.replace(1, &Version::V2(version_two));
