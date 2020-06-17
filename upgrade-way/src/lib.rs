@@ -1,4 +1,5 @@
 use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{Serialize};
 use near_sdk::{env, near_bindgen, collections::Vector, collections::Map, AccountId};
 use core::fmt;
 
@@ -20,9 +21,25 @@ impl fmt::Debug for Version1 {
     }
 }
 
+#[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
+pub struct Version2 {
+    // add "favorite_color" in addition to Version 1's "name" variable
+    pub favorite_color: String,
+    pub favorite_musician: String,
+}
+
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub enum Version {
     V1(Version1),
+    V2(Version2),
+}
+
+// Used in get_all()
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Debug)]
+pub struct AllValues {
+    name: String,
+    favorite_color: String,
+    favorite_musician: String,
 }
 
 impl Version {
@@ -31,6 +48,9 @@ impl Version {
             // Note that V1, V2, VX… are simple increasing numbers
             Version::V1(_) => {
                 "0.0.1".to_string()
+            },
+            Version::V2(_) => {
+                "0.0.2".to_string()
             },
         }
     }
@@ -89,6 +109,7 @@ impl Contract {
                 name: name.to_string(),
                 map: Map::default(),
             },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_one.name
     }
@@ -102,6 +123,7 @@ impl Contract {
                 name: name.to_string(),
                 map,
             },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_one.name = new_name;
         // actually write it to storage
@@ -115,6 +137,7 @@ impl Contract {
                 map: map,
                 name: self._empty_string(),
             },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_one.map.to_vec()
     }
@@ -125,6 +148,7 @@ impl Contract {
                 map: map,
                 name: self._empty_string(),
             },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_one.map.len()
     }
@@ -138,6 +162,7 @@ impl Contract {
                 name: name.to_string(),
                 map,
             },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         version_one.map.insert(&account, &desc);
         // actually write it to storage
@@ -152,6 +177,7 @@ impl Contract {
                 name: name.to_string(),
                 map,
             },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
         };
         for x in 0..190 {
             let key = format!("reasonably long time of string that'll take up some storage {}-{}", x, version_one.map.len());
@@ -172,7 +198,104 @@ impl Contract {
         "Error retrieving version.".to_string()
     }
 
+    /* Start Version 2 work */
+
+    /// Write a (transient) custom upgrade script here.
+    /// After this function is executed it can be deleted and the contract redeployed if desired.
+    pub fn add_v2_with_color(&mut self, favorite_color: String) {
+        self._only_owner_predecessor();
+
+        let v2 = Version2 {
+            favorite_color,
+            favorite_musician: self._empty_string() // Info we haven't collected yet
+        };
+        self.versions.push(&Version::V2(v2));
+        // Update the index of the current version
+        self.current_version_index = self.versions.len() - 1;
+    }
+
+    // Custom getter ("favorite_color" exists in Version2)
+    pub fn get_favorite_color(&self) -> String {
+        let version_two = match self.versions.get(1).unwrap() {
+            // use .. here because we don't care about the value of any variables after
+            Version::V2(Version2{favorite_color, ..}) => Version2 {
+                favorite_color: favorite_color.to_string(),
+                favorite_musician: self._empty_string()
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        version_two.favorite_color
+    }
+
+    // Custom setter ("favorite_color" exists in Version2)
+    pub fn set_favorite_color(&mut self, new_color: String) {
+        self._only_owner_predecessor();
+        // TODO try this pattern
+        // https://blog.rust-lang.org/2015/04/17/Enums-match-mutation-and-moves.html
+        // or
+        // https://stackoverflow.com/q/37267060/711863
+        let mut version_two = match self.versions.get(1).unwrap() {
+            Version::V2(Version2{favorite_color, favorite_musician}) => Version2 {
+                favorite_color: favorite_color.to_string(),
+                favorite_musician: favorite_musician.to_string()
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        version_two.favorite_color = new_color;
+        self.versions.replace(1, &Version::V2(version_two));
+    }
+
+    // Custom getter ("favorite_musician" exists in Version2)
+    pub fn get_favorite_musician(&self) -> String {
+        let version_two = match self.versions.get(1).unwrap() {
+            // use .. here because we don't care about the value of any variables after
+            // note we can reorder the parameters even though favorite_color appears first in the declaration
+            Version::V2(Version2{favorite_musician, ..}) => Version2 {
+                favorite_color: self._empty_string(),
+                favorite_musician: favorite_musician.to_string()
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        version_two.favorite_musician
+    }
+
+    // Custom setter ("favorite_musician" exists in Version2)
+    // Trying to "ref" here, not sure if it's helpful
+    pub fn set_favorite_musician(&mut self, new_musician: String) {
+        self._only_owner_predecessor();
+        let mut version_two = match self.versions.get(1).unwrap() {
+            Version::V2(Version2{ref favorite_color, ref favorite_musician}) => Version2 {
+                favorite_color: favorite_color.to_string(),
+                favorite_musician: favorite_musician.to_string()
+            },
+            _ => env::panic(self._error_retrieving_version().as_bytes())
+        };
+        version_two.favorite_musician = new_musician;
+        self.versions.replace(1, &Version::V2(version_two));
+    }
+
+    pub fn set_all(&mut self, new_name: String, new_color: String, new_musician: String) {
+        self.set_name(new_name);
+        self.set_favorite_color(new_color);
+        self.set_favorite_musician(new_musician);
+    }
+
+    // pub fn get_all(&self) -> (String, String, String) {
+    pub fn get_all(&self) -> AllValues {
+        let name = self.get_name();
+        let favorite_color = self.get_favorite_color();
+        let favorite_musician = self.get_favorite_musician();
+
+        AllValues {
+            name,
+            favorite_color,
+            favorite_musician,
+        }
+    }
+
     fn _empty_string(&self) -> String {
         "".to_string()
     }
+
+    /* End Version 2 work */
 }
