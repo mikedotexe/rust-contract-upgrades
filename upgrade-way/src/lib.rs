@@ -28,25 +28,10 @@ pub struct Version2 {
     pub favorite_musician: String,
 }
 
-// Used in Version 3
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
-pub struct Account {
-    first_name: String,
-    last_name: String,
-    pronoun: String,
-}
-
-#[derive(BorshDeserialize, BorshSerialize, Clone, Debug)]
-pub struct Version3 {
-    // add "account" which uses Version 1's "name"
-    pub account: Account,
-}
-
 #[derive(BorshDeserialize, BorshSerialize, Debug)]
 pub enum Version {
     V1(Version1),
     V2(Version2),
-    V3(Version3),
 }
 
 // Used in get_all()
@@ -66,9 +51,6 @@ impl Version {
             },
             Version::V2(_) => {
                 "0.0.2".to_string()
-            },
-            Version::V3(_) => {
-                "0.1.0".to_string()
             },
         }
     }
@@ -316,43 +298,4 @@ impl Contract {
     }
 
     /* End Version 2 work */
-
-    /* Start Version 3 work */
-
-    /// Write a (transient) custom upgrade script here.
-    /// After this function is executed it can be deleted and the contract redeployed if desired.
-    pub fn add_v3_and_migrate(&mut self) {
-        self._only_owner_predecessor();
-
-        let v1_name = self.get_name();
-        let split_on_space: Vec<&str> = v1_name.split(' ').collect();
-        let last_name = if split_on_space.len() > 1 {
-            split_on_space[1].to_string()
-        } else {
-            self._empty_string()
-        };
-
-        let v3 = Version3 {
-            account: Account {
-                first_name: split_on_space[0].to_string(),
-                last_name,
-                pronoun: "".to_string()
-            }
-        };
-        self.versions.push(&Version::V3(v3));
-        self.current_version_index = self.versions.len() - 1;
-    }
-
-    /// Write a (transient) custom upgrade script here.
-    /// After this function is executed it can be deleted and the contract redeployed if desired.
-    pub fn remove_v1(&mut self) {
-        self._only_owner_predecessor();
-
-        // Note: this removes index 0 (Version 1, and swaps in the last item: Version 3
-        self.versions.swap_remove(0);
-        // Hence, we now set the index to 0
-        self.current_version_index = 0;
-    }
-
-    /* End Version 3 work */
 }
