@@ -9,7 +9,7 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 pub struct Contract {
     pub name: String,
     pub map: Map<AccountId, String>,
-    // pub favorite_color: String,
+    pub favorite_color: String,
 }
 
 impl Default for Contract {
@@ -25,7 +25,8 @@ impl Contract {
         assert!(env::state_read::<Self>().is_none(), "Already initialized");
         Self {
             name,
-            map: Map::new(b"m".to_vec())
+            map: Map::new(b"m".to_vec()),
+            favorite_color: "".to_string()
         }
     }
 
