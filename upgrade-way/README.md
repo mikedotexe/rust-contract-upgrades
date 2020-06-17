@@ -67,3 +67,23 @@ https://doc.rust-lang.org/stable/rust-by-example/scope/borrow/ref.html
 
 Possibly ref here:
 https://stackoverflow.com/a/22266744/711863
+
+#### Upgrade:
+Gas cost
+6,186,107,190,595
+6186107190595
+https://explorer.testnet.near.org/transactions/8gZtQFrCLZRgpY4PVL6BN7iUUFkKuks2DBZeC3geRmsr
+100000000000000 --attached
+100000000000000/6186107190595 could do 16 calls
+
+#### Old way
+Gas cost
+5,772,080,413,987
+5772080413987
+https://explorer.testnet.near.org/transactions/2NmZYM18x5sVDebewLptf7fHuc3FhSVdAFcjAKPCWwJd
+100000000000000 --attached
+100000000000000/5772080413987 could do 17 calls
+
+6186107190595/5772080413987
+1.0717292115
+Upgrade way costs 7.17% more gas per insertion
