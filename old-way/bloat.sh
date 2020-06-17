@@ -1,0 +1,20 @@
+#!/bin/bash
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
+near call old.$NEAR_ACCT bloat_map --accountId old.$NEAR_ACCT --gas 10000000000000000
